@@ -20,6 +20,7 @@ type cache struct {
 
 func main(){
 
+	// just some basic testing and console logging
 	testCache := cache{
 		nodes:   make(map[string]*node),
 		oldest:  "",
@@ -70,29 +71,35 @@ func (c *cache)Read(addr string) (string, bool) {
 	} 
 
 	// update the lru for the address
-	c.update(addr, false)
+	c.updateLRU(addr, false)
 
 	return val.blob,ok
 }
 
 // true if inserted, false if failed
-func (c *cache)Write(addr string, value string) bool {
+func (c *cache)Write(addr string, value string) {
 
+	// do not address cache of size 1...
+	// adds too much code for no value
 	if (c.maxSize <= 1) {
-		return false
+		return
 	}
 
-	// check if exists(overwrite) or new
-	_,exists := c.nodes[addr]
+	// check if exists(overwrite) or new(allocate)
+	_, exists := c.nodes[addr]
 
-	// if addr is not already there and too large, need to free up space
-	if !exists && (c.size >= c.maxSize) {
-		if !c.remove() {
-			return false
+	// if addr is not already there and size is too large, need to free up space
+	if !exists && c.size >= c.maxSize {
+
+		// delete the current oldest after the updates
+		defer delete(c.nodes, c.oldest)
+
+		c.oldest = c.nodes[c.oldest].newer
+		c.nodes[c.oldest].older = ""
+		c.size--
 		}
-	}
 
-	// is new node, need to allocate space
+	// is new node, need to allocate memory and update cache size
 	if (!exists) {
 		c.nodes[addr] = &node{
 			blob: value,
@@ -106,38 +113,20 @@ func (c *cache)Write(addr string, value string) bool {
 	}
 
 	// update the lru
-	c.update(addr, !exists)
+	c.updateLRU(addr, !exists)
 	 
-	return true
 }
 
-// remove the lru, delete the node
-func (c *cache)remove() bool{
-	// is the cache empty
-	if ( c.newest == "" && c.oldest == "" ) || c.size == 0 {
-		return false
-	}
-
-	// delete the current oldest after the updates
-	defer delete(c.nodes, c.oldest)
-
-	c.oldest = c.nodes[c.oldest].newer
-	c.nodes[c.oldest].older = ""
-	c.size--
-
-	return true
-	}
 
 // stick the node in list at the most recent position, it is assumed
 // the list is not past max size
-func (c *cache)update(current string, new bool) {
-
-	if c.newest == current{
+func (c *cache) updateLRU(current string, isNew bool) {
+	if c.newest == current {
 		// nothing to do
 		return
 	}
 
-	if !new && c.oldest == c.newest{
+	if !isNew && c.oldest == c.newest {
 		// nothing to do, single node
 		return
 	}
@@ -149,47 +138,25 @@ func (c *cache)update(current string, new bool) {
 		return
 	}
 
-	// unlink first if not a new node, ie overwrite
-	if new {
-		// already unlinked, add it to the head
-//		c.addToNewest(current)
-	} else {
-		if (c.oldest == current) {
+	// unlink first if not a new node, i.e., overwrite
+	if !isNew {
+		if c.oldest == current {
 			// is it at the tail
-			newer := c.nodes[current].newer
-			c.oldest = newer
-			c.nodes[newer].older = ""
+			c.oldest = c.nodes[current].newer
+			c.nodes[c.oldest].older = ""
 		} else {
-			// not at the head and not at the tail			
+			// not at the head and not at the tail
 			older := c.nodes[current].older
 			newer := c.nodes[current].newer
 			c.nodes[older].newer = newer
 			c.nodes[newer].older = older
 		}
-//		c.addToNewest(current)
 	}
 
 	c.nodes[c.newest].newer = current
 	c.nodes[current].older = c.newest
 	c.newest = current
-
 }
-
-// add a new (unlinked) node to the head
-//func (c *cache)addToNewest(current string){
-
-//	if c.newest == "" || c.oldest == "" {
-//		// cache is empty
-//		c.newest = current
-//		c.oldest = current
-//		return
-//	}
-
-//	c.nodes[c.newest].newer = current
-//	c.nodes[current].older = c.newest
-//	c.newest = current
-
-//}
 
 // print in order of new to old
 func (c *cache)printCache(){

@@ -77,9 +77,18 @@ func TestWrite(t *testing.T){
 		{"d","4",true },
 	}
 
-	for k,v := range tests {
-		if c.Write(v.addr, v.value) != v.exp {
-			 t.Errorf("Test %d failed, addr:%v vale:%v result %t, expected %t", k, v.addr, v.value, !v.exp, v.exp )
+	// without read all we can really do is look for panics and do a final compare
+	for _,v := range tests {
+		c.Write(v.addr, v.value)
+	}
+
+	if c.maxSize != 4 || c.oldest != "a" || c.newest != "d" || c.size != 4 {
+		t.Errorf("Test failed (exp,res), maxSize:(%d,%d) size: (%d,%d) oldest(%s,%s) newest:(%s,%s)",c.maxSize,4,c.size,4, c.oldest, "a", c.newest, "d")
+	}
+		
+	for i :=0; i < 4 ; i++ {
+		if tests[i].value !=  c.nodes[tests[i].addr].blob {
+			t.Errorf("Cache entry wrong: idx %d addr:%v exp %s got %s", i,tests[i].addr, tests[i].value, c.nodes[tests[i].addr].blob)
 		}
 	}
 
@@ -109,9 +118,7 @@ func TestReadWrite(t *testing.T){
 		}
 
 		// write the entry
-		if !c.Write(addr, value) {
-			 t.Errorf("Test %d write failed, addr:%v value:%v", i, addr, value)
-		}
+		c.Write(addr, value) 
 
 		// verify
 		r, ok =  c.Read(addr)
@@ -120,9 +127,7 @@ func TestReadWrite(t *testing.T){
 		}
 
 		// overwrite the entry
-		if !c.Write(addr, value + " overwrite") {
-			 t.Errorf("Test %d overwrite 2 failed, addr:%v value:%v", i, addr, value + "overwrite")
-		}
+		c.Write(addr, value + " overwrite")
 
 		// verify
 		r, ok =  c.Read(addr)
