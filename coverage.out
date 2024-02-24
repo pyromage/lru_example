@@ -1,0 +1,25 @@
+mode: set
+github.com/shopify/lru.go:19.12,32.2 3 0
+github.com/shopify/lru.go:35.49,38.38 1 1
+github.com/shopify/lru.go:38.38,40.3 1 1
+github.com/shopify/lru.go:42.2,45.9 2 1
+github.com/shopify/lru.go:45.9,47.3 1 1
+github.com/shopify/lru.go:50.2,52.20 2 1
+github.com/shopify/lru.go:56.54,61.34 2 1
+github.com/shopify/lru.go:61.34,62.18 1 1
+github.com/shopify/lru.go:62.18,64.4 1 0
+github.com/shopify/lru.go:68.2,68.11 1 1
+github.com/shopify/lru.go:68.11,74.3 1 1
+github.com/shopify/lru.go:74.8,77.3 1 1
+github.com/shopify/lru.go:80.2,82.13 2 1
+github.com/shopify/lru.go:86.29,88.38 1 1
+github.com/shopify/lru.go:88.38,90.3 1 0
+github.com/shopify/lru.go:92.2,92.17 1 1
+github.com/shopify/lru.go:92.17,94.3 1 0
+github.com/shopify/lru.go:98.2,100.26 3 1
+github.com/shopify/lru.go:100.26,104.3 2 1
+github.com/shopify/lru.go:104.8,108.3 2 0
+github.com/shopify/lru.go:110.2,110.13 1 1
+github.com/shopify/lru.go:115.36,121.38 4 1
+github.com/shopify/lru.go:121.38,127.3 4 1
+github.com/shopify/lru.go:127.8,132.3 3 1
