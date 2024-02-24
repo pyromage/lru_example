@@ -1,4 +1,4 @@
-package main
+package lru
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 )
 
 func TestNew(t *testing.T){
-	var c cache[string,string]
+	var c Cache[string,string]
 
 	if c.New(0) == true || c.New(1) == true {
 		t.Errorf("New failed, tried to allocate a cache that is too small")
@@ -23,7 +23,7 @@ func TestNew(t *testing.T){
 }
 
 func TestRead(t *testing.T){
-	var c cache[string,string]
+	var c Cache[string,string]
 
 	// test the empty cache
 	blob, ok := c.Read("Uninitialized cache")
@@ -65,12 +65,12 @@ func TestRead(t *testing.T){
 		}
 	}
 
-	c.printCache()
+	c.Print()
 
 }
 
 func TestWrite(t *testing.T){
-	var c cache[string,string]
+	var c Cache[string,string]
 
 	// test the empty cache
 	ok := c.Write("Uninitialized cache","Should not be here")
@@ -81,6 +81,15 @@ func TestWrite(t *testing.T){
 
 	// create a cache of size 4
 	c.New(4)
+
+	// cannot write to the empty key
+	var emptyKey string
+
+	ok = c.Write(emptyKey,"Should not be here")
+	
+	if ok {
+		t.Errorf("Test write to empty key succeeded")
+	}
 
 	type test struct {
 		addr string
@@ -110,12 +119,12 @@ func TestWrite(t *testing.T){
 		}
 	}
 
-	c.printCache()
+	c.Print()
 
 }
 
 func TestReadWrite(t *testing.T){
-	var c cache[string,string]
+	var c Cache[string,string]
 
 	// test the empty cache
 	blob, ok := c.Read("Uninitialized cache")
@@ -164,6 +173,6 @@ func TestReadWrite(t *testing.T){
 		}
 	}
 
-	c.printCache()
+	c.Print()
 
 }

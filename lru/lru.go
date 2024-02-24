@@ -1,4 +1,4 @@
-package main
+package lru
 
 import "fmt"
 
@@ -10,7 +10,7 @@ type node[K comparable, V any] struct {
 }
 
 
-type cache[K comparable,V any] struct {
+type Cache[K comparable,V any] struct {
 	nodes map[K]*node[K,V] 
 	oldest K
 	newest K
@@ -18,40 +18,8 @@ type cache[K comparable,V any] struct {
 	maxSize int
 }
 
-func main(){
 
-	var testCache cache[string, string]
-
-	// just some basic testing and console logging
-	testCache.New(3)	
-
-	fmt.Println("0")
-	testCache.Read("a")
-	testCache.printCache()
-
-	fmt.Println("1")
-	testCache.Write("a","1")
-	testCache.printCache()
-
-	fmt.Println("2")
-	testCache.Write("a","2")
-	testCache.printCache()
-
-	fmt.Println("3")
-	testCache.Write("b","3")
-	testCache.printCache()
-
-	fmt.Println("4")
-	testCache.Write("b","4")
-	testCache.printCache()
-
-	fmt.Println("5")
-	testCache.Write("a","5")
-	testCache.printCache()
-
-}
-
-func (c *cache[K,V])New(size int) bool {
+func (c *Cache[K,V])New(size int) bool {
 	// already exists
 	if c.maxSize != 0 {
 		return false
@@ -73,7 +41,7 @@ func (c *cache[K,V])New(size int) bool {
 	return true
 }
 
-func (c *cache[K,V])Read(addr K) (V, bool) {
+func (c *Cache[K,V])Read(addr K) (V, bool) {
 	var nilKey K
 	var nilValue V
 
@@ -97,13 +65,19 @@ func (c *cache[K,V])Read(addr K) (V, bool) {
 }
 
 // true if inserted, false if failed
-func (c *cache[K,V])Write(addr K, value V) bool {
+func (c *Cache[K,V])Write(addr K, value V) bool {
 	var nilKey K
 
 	// do not address cache of size 1...
 	// adds too much code for no value
 	if (c.maxSize <= 1) {
 		return false
+	}
+
+	// cannot write to the empty key
+	if (addr == nilKey){
+		return false
+
 	}
 
 	// check if exists(overwrite) or new(allocate)
@@ -143,14 +117,9 @@ func (c *cache[K,V])Write(addr K, value V) bool {
 
 // stick the node in list at the most recent position, it is assumed
 // the list is not past max size
-func (c *cache[K,V]) updateLRU(current K, isNew bool) {
+func (c *Cache[K,V]) updateLRU(current K, isNew bool) {
 	if c.newest == current {
 		// nothing to do
-		return
-	}
-
-	if !isNew && c.oldest == c.newest {
-		// nothing to do, single node
 		return
 	}
 
@@ -178,31 +147,35 @@ func (c *cache[K,V]) updateLRU(current K, isNew bool) {
 		}
 	}
 
+	// node is unlinked, add to the most recent end
 	c.nodes[c.newest].newer = current
 	c.nodes[current].older = c.newest
 	c.newest = current
 }
 
 // print in order of new to old
-func (c *cache[K,V])printCache(){
+func (c *Cache[K,V])Print(){
 	var nilKey K
-	idx := 0
 
+	// Header
 	fmt.Printf("Cache max: %d sz: %d newest: %v oldest: %v\n", c.maxSize, c.size, c.newest, c.oldest)
 	
+	// Unordered form, range over the whole map
 	fmt.Println("Raw")
 	for addr, blob := range c.nodes {
 		fmt.Printf("  Node %v body %v newer %v older %v\n",addr,blob,c.nodes[addr].newer,c.nodes[addr].older)
 	}
 
-	fmt.Println("Traverse")
+	// Traverse from most recent to least recent
+	fmt.Println("Traverse from most to least recently used")
+	idx := 0
 	for addr := c.newest; addr != nilKey; addr = c.nodes[addr].older {
 		fmt.Printf("  Node: %v blob: %v newer: %v older: %v\n",addr,c.nodes[addr].blob,c.nodes[addr].newer,c.nodes[addr].older)
 		idx++
 
 		if idx > c.maxSize {
 			fmt.Println("Error in structure of cache")
-			panic("Error in structure of cache")
+			return		
 		}
 	}
 }
