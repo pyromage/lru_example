@@ -3,31 +3,27 @@ package main
 import "fmt"
 
 
-type node struct {
-	newer string
-	older string
-	blob string
+type node[K comparable, V any] struct {
+	newer K
+	older K
+	blob V
 }
 
 
-type cache struct {
-	nodes map[string]*node 
-	oldest string
-	newest string
+type cache[K comparable,V any] struct {
+	nodes map[K]*node[K,V] 
+	oldest K
+	newest K
 	size int
 	maxSize int
 }
 
 func main(){
 
+	var testCache cache[string, string]
+
 	// just some basic testing and console logging
-	testCache := cache{
-		nodes:   make(map[string]*node),
-		oldest:  "",
-		newest:  "",
-		size:    0,
-		maxSize: 3,
-	}
+	testCache.New(3)	
 
 	fmt.Println("0")
 	testCache.Read("a")
@@ -55,19 +51,43 @@ func main(){
 
 }
 
-
-func (c *cache)Read(addr string) (string, bool) {
+func (c *cache[K,V])New(size int) bool {
+	// already exists
+	if c.maxSize != 0 {
+		return false
+	}
 	
-	// empty cache
-	if c.newest == "" || c.oldest == "" || c.maxSize <= 1 {
-		return "", false	
+	// too small, must be larger than 2
+	if (size <= 1) {
+		return false
+	}
+	
+	var empty K
+
+	c.nodes = 	make(map[K]*node[K,V])
+	c.oldest = empty
+	c.newest = empty
+	c.size = 0
+	c.maxSize = size
+
+	return true
+}
+
+func (c *cache[K,V])Read(addr K) (V, bool) {
+	var nilKey K
+	var nilValue V
+
+
+	// empty cache or not initialized or trying to cache the nil value
+	if c.newest == nilKey || c.oldest == nilKey || c.maxSize <= 1 || addr == nilKey {
+		return nilValue, false	
 	}
 	
 	val, ok := c.nodes[addr]
 
 	// value does not exist
 	if !ok {
-		return "", false
+		return nilValue, false
 	} 
 
 	// update the lru for the address
@@ -77,12 +97,13 @@ func (c *cache)Read(addr string) (string, bool) {
 }
 
 // true if inserted, false if failed
-func (c *cache)Write(addr string, value string) {
+func (c *cache[K,V])Write(addr K, value V) bool {
+	var nilKey K
 
 	// do not address cache of size 1...
 	// adds too much code for no value
 	if (c.maxSize <= 1) {
-		return
+		return false
 	}
 
 	// check if exists(overwrite) or new(allocate)
@@ -95,16 +116,16 @@ func (c *cache)Write(addr string, value string) {
 		defer delete(c.nodes, c.oldest)
 
 		c.oldest = c.nodes[c.oldest].newer
-		c.nodes[c.oldest].older = ""
+		c.nodes[c.oldest].older = nilKey
 		c.size--
 		}
 
 	// is new node, need to allocate memory and update cache size
 	if (!exists) {
-		c.nodes[addr] = &node{
+		c.nodes[addr] = &node[K,V]{
 			blob: value,
-			newer: "",
-			older: "",
+			newer: nilKey,
+			older: nilKey,
 		}
 		c.size++
 	} else {
@@ -114,13 +135,15 @@ func (c *cache)Write(addr string, value string) {
 
 	// update the lru
 	c.updateLRU(addr, !exists)
-	 
+
+	return true
 }
 
+// Internal(private)used in package only functions
 
 // stick the node in list at the most recent position, it is assumed
 // the list is not past max size
-func (c *cache) updateLRU(current string, isNew bool) {
+func (c *cache[K,V]) updateLRU(current K, isNew bool) {
 	if c.newest == current {
 		// nothing to do
 		return
@@ -131,7 +154,9 @@ func (c *cache) updateLRU(current string, isNew bool) {
 		return
 	}
 
-	if c.newest == "" && c.oldest == "" {
+	var nilKey K
+
+	if c.newest == nilKey && c.oldest == nilKey {
 		// cache is empty
 		c.newest = current
 		c.oldest = current
@@ -143,7 +168,7 @@ func (c *cache) updateLRU(current string, isNew bool) {
 		if c.oldest == current {
 			// is it at the tail
 			c.oldest = c.nodes[current].newer
-			c.nodes[c.oldest].older = ""
+			c.nodes[c.oldest].older = nilKey
 		} else {
 			// not at the head and not at the tail
 			older := c.nodes[current].older
@@ -159,11 +184,11 @@ func (c *cache) updateLRU(current string, isNew bool) {
 }
 
 // print in order of new to old
-func (c *cache)printCache(){
-
+func (c *cache[K,V])printCache(){
+	var nilKey K
 	idx := 0
 
-	fmt.Printf("Cache max: %d sz: %d newest: %s oldest: %s\n", c.maxSize, c.size, c.newest, c.oldest)
+	fmt.Printf("Cache max: %d sz: %d newest: %v oldest: %v\n", c.maxSize, c.size, c.newest, c.oldest)
 	
 	fmt.Println("Raw")
 	for addr, blob := range c.nodes {
@@ -171,7 +196,7 @@ func (c *cache)printCache(){
 	}
 
 	fmt.Println("Traverse")
-	for addr := c.newest; addr != ""; addr = c.nodes[addr].older {
+	for addr := c.newest; addr != nilKey; addr = c.nodes[addr].older {
 		fmt.Printf("  Node: %v blob: %v newer: %v older: %v\n",addr,c.nodes[addr].blob,c.nodes[addr].newer,c.nodes[addr].older)
 		idx++
 

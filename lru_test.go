@@ -5,30 +5,44 @@ import (
 	"testing"
 )
 
-func TestRead(t *testing.T){
-	c := cache{
-		nodes:   make(map[string]*node),
-		oldest:  "",
-		newest:  "",
-		size:    0,
-		maxSize: 4,
+func TestNew(t *testing.T){
+	var c cache[string,string]
+
+	if c.New(0) == true || c.New(1) == true {
+		t.Errorf("New failed, tried to allocate a cache that is too small")
 	}
+
+	if c.New(2) == false {
+		t.Errorf("New failed to create a cache of size 2")
+	}
+
+	if c.New(3) == true {
+		t.Errorf("New failed, cache is already initialized")
+	}
+
+}
+
+func TestRead(t *testing.T){
+	var c cache[string,string]
 
 	// test the empty cache
-	blob, ok := c.Read("Empty cache")
+	blob, ok := c.Read("Uninitialized cache")
 	if ok || blob != "" {
-		t.Errorf("Test empty cache failed, got blob:%v exp: %v res: %t exp %t", blob, "", ok, false)
+		t.Errorf("Test unitialized cache failed")
 	}
 
-	// create a cache
+	// create a cache of size 4
+	c.New(4)
+
+	// populate the cache, unit test so will not use the write
 	c.oldest = "d"
 	c.newest = "a"
 	c.size = 4
 	c.maxSize = 4
-	c.nodes["a"] = &node{older: "b", newer: "", blob: "0"}
-	c.nodes["b"] = &node{older: "c", newer: "a", blob: "1"}
-	c.nodes["c"] = &node{older: "d", newer: "b", blob: "2"}
-	c.nodes["d"] = &node{older: "", newer: "c", blob: "3"}
+	c.nodes["a"] = &node[string, string]{older: "b", newer: "", blob: "0"}
+	c.nodes["b"] = &node[string, string]{older: "c", newer: "a", blob: "1"}
+	c.nodes["c"] = &node[string, string]{older: "d", newer: "b", blob: "2"}
+	c.nodes["d"] = &node[string, string]{older: "", newer: "c", blob: "3"}
 
 	type test struct {
 		addr string
@@ -56,13 +70,17 @@ func TestRead(t *testing.T){
 }
 
 func TestWrite(t *testing.T){
-	c := cache{
-		nodes:   make(map[string]*node),
-		oldest:  "",
-		newest:  "",
-		size:    0,
-		maxSize: 4,
-	} 
+	var c cache[string,string]
+
+	// test the empty cache
+	ok := c.Write("Uninitialized cache","Should not be here")
+	
+	if ok {
+		t.Errorf("Test unitialized cache failed")
+	}
+
+	// create a cache of size 4
+	c.New(4)
 
 	type test struct {
 		addr string
@@ -97,15 +115,25 @@ func TestWrite(t *testing.T){
 }
 
 func TestReadWrite(t *testing.T){
+	var c cache[string,string]
+
+	// test the empty cache
+	blob, ok := c.Read("Uninitialized cache")
+	
+	if ok || blob != "" {
+		t.Errorf("Test read unitialized cache failed")
+	}
+
+	ok = c.Write("Uninitialized cache","Should not be here")
+	
+	if ok {
+		t.Errorf("Test write unitialized cache failed")
+	}
+
 	const maxCacheSize = 10
 
-	c := cache{
-		nodes:   make(map[string]*node),
-		oldest:  "",
-		newest:  "",
-		size:    0,
-		maxSize: maxCacheSize,
-	} 
+	// create a cache
+	c.New(maxCacheSize)
 
 	for i :=0 ; i < 100 ; i++ {
 		addr := fmt.Sprint(i%(maxCacheSize+1))
@@ -114,7 +142,7 @@ func TestReadWrite(t *testing.T){
 		// no entry
 		r, ok :=  c.Read(addr)
 		if  ok {
-			 t.Errorf("Test %d read failed, addr:%v value:%v", i, addr, r)
+			 t.Errorf("Test %d read 1 failed, addr:%v value:%v", i, addr, r)
 		}
 
 		// write the entry
@@ -132,7 +160,7 @@ func TestReadWrite(t *testing.T){
 		// verify
 		r, ok =  c.Read(addr)
 		if  !ok || r != value + " overwrite" {
-			 t.Errorf("Test %d.read failed, addr:%v value:%v got blob %v res %t", i, addr, value + "overwrite", r, ok)
+			 t.Errorf("Test %d read 3 failed, addr:%v value:%v got blob %v res %t", i, addr, value + "overwrite", r, ok)
 		}
 	}
 
