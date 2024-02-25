@@ -1,6 +1,6 @@
 Example from an interview question to build a LRU in memory cache.
 
-This implementation is in Go and uses a map of pointers to nodes, where the nodes maintain a double linked list ordering most recently used to least recently used. The cache has a fixed size set when it is created, but this could easily be made resizable.
+This implementation is in Go and uses a map of pointers to nodes, where the nodes maintain a double linked list with ordering constraint most recently used to least recently used. The cache has a fixed size that must be set when it is created, but the cache could easily be made resizable.
 
 ``` 
   newest -> [Key 1 ]      [Key 2 ]      [Key 3 ]      [Key 4 ]      [Key 5 ] <- oldest
