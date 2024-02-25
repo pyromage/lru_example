@@ -15,14 +15,13 @@ type Cache[K comparable,V any] struct {
 	nodes map[K]*node[K, V] 
 	oldest K
 	newest K
-	size int
 	maxSize int
 }
 
 func NewCache[K comparable, V any](size int) (*Cache[K,V], error) {
 	// too small, must be larger than 2
 	if size <= 1 {
-		return nil, errors.New("size must be larger than 1")
+		return nil, errors.New("maximum size must be larger than 1")
 	}
 	
 	var empty K
@@ -31,7 +30,6 @@ func NewCache[K comparable, V any](size int) (*Cache[K,V], error) {
 		nodes: 	make(map[K]*node[K,V]),
 		oldest: empty,
 		newest: empty,
-		size: 0,
 		maxSize: size,
 	}, nil
 }
@@ -71,12 +69,12 @@ func (c *Cache[K,V])Write(addr K, value V) error {
 	_, exists := c.nodes[addr]
 
 	// if this is a miss but cache is full then free up space
-	if !exists && c.size >= c.maxSize {
-		defer delete(c.nodes, c.oldest)
+	if !exists && len(c.nodes) >= c.maxSize {
 
+		oldTmp := c.oldest
 		c.oldest = c.nodes[c.oldest].newer
 		c.nodes[c.oldest].older = nilKey
-		c.size--
+		delete(c.nodes, oldTmp)
 	}
 
 	// a cache miss, need new node and update cache size
@@ -86,7 +84,6 @@ func (c *Cache[K,V])Write(addr K, value V) error {
 			newer: nilKey,
 			older: nilKey,
 		}
-		c.size++
 	} else {
 		// cache hit, just update the blob
 		c.nodes[addr].blob = value
@@ -142,7 +139,7 @@ func (c *Cache[K,V])Print(){
 	var nilKey K
 
 	// Header
-	fmt.Printf("Cache max: %d sz: %d newest: %v oldest: %v\n", c.maxSize, c.size, c.newest, c.oldest)
+	fmt.Printf("Cache max: %d sz: %d newest: %v oldest: %v\n", c.maxSize, len(c.nodes), c.newest, c.oldest)
 	
 	// Unordered form, range over the whole map
 	fmt.Println("Raw")

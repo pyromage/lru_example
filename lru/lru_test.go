@@ -43,7 +43,6 @@ func TestRead(t *testing.T){
 	// populate the cache, unit test so will not use the write
 	c.oldest = "d"
 	c.newest = "a"
-	c.size = 4
 	c.maxSize = 4
 	c.nodes["a"] = &node[string, string]{older: "b", newer: "", blob: "0"}
 	c.nodes["b"] = &node[string, string]{older: "c", newer: "a", blob: "1"}
@@ -119,8 +118,8 @@ func TestWrite(t *testing.T){
 		}
 	}
 
-	if c.maxSize != 4 || c.oldest != "a" || c.newest != "d" || c.size != 4 {
-		t.Errorf("Test failed (exp,res), maxSize:(%d,%d) size: (%d,%d) oldest(%s,%s) newest:(%s,%s)",c.maxSize,4,c.size,4, c.oldest, "a", c.newest, "d")
+	if c.maxSize != 4 || c.oldest != "a" || c.newest != "d" || len(c.nodes) != 4 {
+		t.Errorf("Test failed (exp,res), maxSize:(%d,%d) size: (%d,%d) oldest(%s,%s) newest:(%s,%s)",c.maxSize,4,len(c.nodes),4, c.oldest, "a", c.newest, "d")
 	}
 		
 	for i :=0; i < 4 ; i++ {
@@ -209,7 +208,6 @@ func TestPrint(t *testing.T){
 	// make the cache circular
 	c.oldest = "d"
 	c.newest = "a"
-	c.size = 4
 	c.maxSize = 4
 	c.nodes["a"] = &node[string, string]{older: "b", newer: "d", blob: "0"}
 	c.nodes["b"] = &node[string, string]{older: "c", newer: "a", blob: "1"}
@@ -246,34 +244,22 @@ func BenchmarkCacheReadWrite(b *testing.B){
 		b.Errorf("Create cache failed: %v",err)
 	}
 
+	value := "Benchmarking"
 	for i :=0 ; i < b.N ; i++ {
 		addr := fmt.Sprint(i%(maxCacheSize+1))
-		value := "Benchmarking"
-
-		// no entry, new address
-		r, ok :=  c.Read(addr)
-		if  ok {
-			 b.Errorf("Test %d read 1 failed, addr:%v value:%v", i, addr, r)
-		}
-
+		
 		// write the entry
-		c.Write(addr, value) 
-
-		// verify
-		r, ok =  c.Read(addr)
-		if  !ok || r != value {
-			 b.Errorf("Test %d read 2 failed, addr:%v value:%v got blob %v res %t", i, addr, value, r, ok)
+		err = c.Write(addr, value) 
+		if err !=nil {
+			b.Errorf("Test %d write failed , addr:%v value:%v err: %v", i, addr, value, err)
 		}
-
-		// overwrite the entry
-		c.Write(addr, value + " overwrite")
 
 		// Do 10 reads for each write
 		for j := 0; j < 10 ; j++ {
 			// verify
-			r, ok =  c.Read(addr)
-			if  !ok || r != value + " overwrite" {
-				b.Errorf("Test %d read 3 failed, addr:%v value:%v got blob %v res %t", i, addr, value + "overwrite", r, ok)
+			r, ok :=  c.Read(addr)
+			if  !ok || r != value {
+				b.Errorf("Test %d read %d failed, addr:%v value:%v got blob %v res %t", i, j, addr, value, r, ok)
 			}
 		}
 	}

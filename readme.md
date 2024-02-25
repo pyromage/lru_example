@@ -47,4 +47,4 @@ A common function is to take an unlinked node and put it at the most recent or h
 * 100% code coverage
 * Unit tests for boundary conditions, unitialized cache etc.
 * Functional series of read & writes
-* No benchmark included
+* Basic benchmark of 1 write to 10 reads for a cache of size 10
