@@ -62,22 +62,19 @@ func (c *Cache[K,V])Write(addr K, value V) error {
 
 	if (addr == nilKey){
 		return errors.New("cannot write to the empty key")
-
 	}
 
 	// is this a cache hit or miss
 	_, exists := c.nodes[addr]
 
-	// if this is a miss but cache is full then free up space
+	// a write miss and cache is full so delete the lru (tail)
 	if !exists && len(c.nodes) >= c.maxSize {
-
-		oldTmp := c.oldest
 		c.oldest = c.nodes[c.oldest].newer
+		delete(c.nodes,c.nodes[c.oldest].older)
 		c.nodes[c.oldest].older = nilKey
-		delete(c.nodes, oldTmp)
 	}
 
-	// a cache miss, need new node and update cache size
+	// a write miss, allocate a node
 	if !exists {
 		c.nodes[addr] = &node[K,V]{
 			blob: value,
@@ -85,7 +82,7 @@ func (c *Cache[K,V])Write(addr K, value V) error {
 			older: nilKey,
 		}
 	} else {
-		// cache hit, just update the blob
+		// a write hit, just update the blob
 		c.nodes[addr].blob = value
 	}
 
@@ -95,28 +92,24 @@ func (c *Cache[K,V])Write(addr K, value V) error {
 }
 
 // Internal(private)used in package only functions
-
-// stick the node in list at the most recent position, it is assumed
-// the list is not past max size
 func (c *Cache[K,V]) moveToHead(current K, isNew bool) {
 	if c.newest == current {
-		// nothing to do
+		// node is already at the head, nothing to do
 		return
 	}
 
-	var nilKey K
-
-	if c.newest == nilKey && c.oldest == nilKey {
-		// cache is empty
+	if len(c.nodes) == 1 {	
+		// cache is empty, the one node is the new node
 		c.newest = current
 		c.oldest = current
 		return
 	}
 
-	// unlink first if not a new node, i.e., overwrite
+	// unlink if not a new node, i.e., a read/write hit
 	if !isNew {
 		if c.oldest == current {
 			// is it at the tail
+			var nilKey K
 			c.oldest = c.nodes[current].newer
 			c.nodes[c.oldest].older = nilKey
 		} else {

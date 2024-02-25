@@ -117,7 +117,7 @@ func TestWrite(t *testing.T){
 			t.Errorf("Test write failed: %v",err)
 		}
 	}
-
+	
 	if c.maxSize != 4 || c.oldest != "a" || c.newest != "d" || len(c.nodes) != 4 {
 		t.Errorf("Test failed (exp,res), maxSize:(%d,%d) size: (%d,%d) oldest(%s,%s) newest:(%s,%s)",c.maxSize,4,len(c.nodes),4, c.oldest, "a", c.newest, "d")
 	}
