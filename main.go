@@ -2,15 +2,19 @@ package main
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/pyromage/lru_example/lru"
 )
 
 func main(){
 
-	var testCache lru.Cache[string, string]
-
 	// just some basic testing and console logging
-	testCache.New(3)	
+	testCache,err := lru.NewCache[string, string](3)
+	
+	if err != nil {
+		log.Fatalf("Faled to create cache: %v",err)
+	}
 
 	fmt.Println("0")
 	testCache.Read("a")

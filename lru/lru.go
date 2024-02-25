@@ -1,7 +1,9 @@
 package lru
 
-import "fmt"
-
+import (
+	"errors"
+	"fmt"
+)
 
 type node[K comparable, V any] struct {
 	newer K
@@ -9,93 +11,76 @@ type node[K comparable, V any] struct {
 	blob V
 }
 
-
 type Cache[K comparable,V any] struct {
-	nodes map[K]*node[K,V] 
+	nodes map[K]*node[K, V] 
 	oldest K
 	newest K
 	size int
 	maxSize int
 }
 
-
-func (c *Cache[K,V])New(size int) bool {
-	// already exists
-	if c.maxSize != 0 {
-		return false
-	}
-	
+func NewCache[K comparable, V any](size int) (*Cache[K,V], error) {
 	// too small, must be larger than 2
-	if (size <= 1) {
-		return false
+	if size <= 1 {
+		return nil, errors.New("size must be larger than 1")
 	}
 	
 	var empty K
 
-	c.nodes = 	make(map[K]*node[K,V])
-	c.oldest = empty
-	c.newest = empty
-	c.size = 0
-	c.maxSize = size
-
-	return true
+	return &Cache[K,V]{
+		nodes: 	make(map[K]*node[K,V]),
+		oldest: empty,
+		newest: empty,
+		size: 0,
+		maxSize: size,
+	}, nil
 }
 
 func (c *Cache[K,V])Read(addr K) (V, bool) {
 	var nilKey K
 	var nilValue V
 
-
-	// empty cache or not initialized or trying to cache the nil value
 	if c.newest == nilKey || c.oldest == nilKey || c.maxSize <= 1 || addr == nilKey {
 		return nilValue, false	
 	}
 	
 	val, ok := c.nodes[addr]
-
-	// value does not exist
 	if !ok {
 		return nilValue, false
 	} 
 
-	// update the lru for the address
-	c.updateLRU(addr, false)
+	c.moveToHead(addr, false)
 
 	return val.blob,ok
 }
 
-// true if inserted, false if failed
-func (c *Cache[K,V])Write(addr K, value V) bool {
+// true if inserted, false if failed to insert
+func (c *Cache[K,V])Write(addr K, value V) error {
 	var nilKey K
 
-	// do not address cache of size 1...
-	// adds too much code for no value
 	if (c.maxSize <= 1) {
-		return false
+		return errors.New("cache size must be larger than 1")
 	}
 
-	// cannot write to the empty key
 	if (addr == nilKey){
-		return false
+		return errors.New("cannot write to the empty key")
 
 	}
 
-	// check if exists(overwrite) or new(allocate)
+	// is this a cache hit or miss
 	_, exists := c.nodes[addr]
 
-	// if addr is not already there and size is too large, need to free up space
+	// if this is a miss but cache is full then free up space
 	if !exists && c.size >= c.maxSize {
-
-		// delete the current oldest after the updates
 		defer delete(c.nodes, c.oldest)
 
 		c.oldest = c.nodes[c.oldest].newer
 		c.nodes[c.oldest].older = nilKey
 		c.size--
-		}
+	}
 
-	// is new node, need to allocate memory and update cache size
-	if (!exists) {
+	// a cache miss, need new node and update cache size
+	if !exists {
 		c.nodes[addr] = &node[K,V]{
 			blob: value,
 			newer: nilKey,
@@ -103,21 +88,20 @@ func (c *Cache[K,V])Write(addr K, value V) bool {
 		}
 		c.size++
 	} else {
-		// update existing
+		// cache hit, just update the blob
 		c.nodes[addr].blob = value
 	}
 
-	// update the lru
-	c.updateLRU(addr, !exists)
+	c.moveToHead(addr, !exists)
 
-	return true
+	return nil
 }
 
 // Internal(private)used in package only functions
 
 // stick the node in list at the most recent position, it is assumed
 // the list is not past max size
-func (c *Cache[K,V]) updateLRU(current K, isNew bool) {
+func (c *Cache[K,V]) moveToHead(current K, isNew bool) {
 	if c.newest == current {
 		// nothing to do
 		return
